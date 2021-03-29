@@ -64,32 +64,32 @@ object :: {
 trait ListImplementation[A] extends List[A] {
 
   override def head: Option[A] = this match {
-    case h :: t => Some(h)
+    case h :: _ => Some(h)
     case _ => None
   }
   override def tail: Option[List[A]] = this match {
-    case h :: t => Some(t)
+    case _ :: t => Some(t)
     case _ => None
   }
   override def append(list: List[A]): List[A] = this match {
     case h :: t => h :: (t append list)
     case _ => list
   }
-  override def foreach(consumer: (A)=>Unit): Unit = this match {
-    case h :: t => {consumer(h); t foreach consumer}
+  override def foreach(consumer: A =>Unit): Unit = this match {
+    case h :: t => consumer(h); t foreach consumer
     case _ => None
   }
   override def get(pos: Int): Option[A] = this match {
-    case h :: t if pos == 0 => Some(h)
-    case h :: t if pos > 0 => t get (pos-1)
+    case h :: _ if pos == 0 => Some(h)
+    case _ :: t if pos > 0 => t get (pos-1)
     case _ => None
   }
-  override def filter(predicate: (A) => Boolean): List[A] = this match {
-    case h :: t if (predicate(h)) => h :: (t filter predicate)
-    case _ :: t => (t filter predicate)
+  override def filter(predicate: A => Boolean): List[A] = this match {
+    case h :: t if predicate(h) => h :: (t filter predicate)
+    case _ :: t => t filter predicate
     case _ => Nil()
   }
-  override def map[B](fun: (A) => B): List[B] = this match {
+  override def map[B](fun: A => B): List[B] = this match {
     case h :: t => fun(h) :: (t map fun)
     case _ => Nil()
   }
@@ -108,14 +108,31 @@ trait ListImplementation[A] extends List[A] {
     this.reverse().foldLeft(acc)((acc,elem) => f(elem,acc))
 
   override def reverse(): List[A] =
-    this.foldLeft(Nil[A].asInstanceOf[List[A]])((acc,elem) => Cons(elem,acc))
+    this.foldLeft(Nil[A]().asInstanceOf[List[A]])((acc, elem) => Cons(elem,acc))
 
   override def flatMap[B](f: A => List[B]): List[B] = this match {
     case Cons(h,t) => f(h).append(t.flatMap(f))
     case Nil() => Nil()
   }
 
-  override def zipRight: List[(A,Int)] = ??? // questions: what is the type of keyword ???
+  private def size: Int = this.foldLeft(0)((acc, _) => acc + 1)
+
+  // TODO: try with a foldRight()
+  override def zipRight: List[(A,Int)] =
+    this.foldRight((this.size - 1, List.nil[(A,Int)]))((elem, acc) => {
+    val (n, res) = acc
+    (n - 1, (elem, n) :: res)
+  })._2
+  /*
+  {
+    @tailrec
+    def _zipRight(l: List[A], k: Int, res: List[(A, Int)]): List[(A, Int)] = l match {
+      case h :: t => _zipRight(t, k + 1, (h, k) :: res)
+      case _ => res.reverse()
+    }
+    _zipRight(this, 0, List.nil)
+  }
+  */
 
   override def partition(pred: A => Boolean): (List[A],List[A]) = ???
 
