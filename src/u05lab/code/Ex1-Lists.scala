@@ -1,6 +1,5 @@
 package u05lab.code
 
-import scala.annotation.tailrec
 import scala.language.postfixOps // silence warnings
 
 sealed trait List[A] {
@@ -9,15 +8,17 @@ sealed trait List[A] {
 
   def tail: Option[List[A]]
 
+  def size: Int
+
   def append(list: List[A]): List[A]
 
-  def foreach(consumer: (A) => Unit): Unit
+  def foreach(consumer: A => Unit): Unit
 
   def get(pos: Int): Option[A]
 
-  def filter(predicate: (A) => Boolean): List[A]
+  def filter(predicate: A => Boolean): List[A]
 
-  def map[B](fun: (A) => B): List[B]
+  def map[B](fun: A => B): List[B]
 
   def toSeq: Seq[A]
 
@@ -39,6 +40,8 @@ sealed trait List[A] {
 
   def takeRight(n: Int): List[A]
 
+  def collect[B](f: PartialFunction[A, B]): List[B]
+
   // right-associative construction: 10 :: 20 :: 30 :: Nil()
   def ::(head: A): List[A] = Cons(head,this)
 }
@@ -46,7 +49,8 @@ sealed trait List[A] {
 // defining concrete implementations based on the same template
 
 case class Cons[A](_head: A, _tail: List[A])
-  extends ListImplementation[A]
+  extends ListImplementation[A] {
+}
 
 case class Nil[A]()
   extends ListImplementation[A]
@@ -67,28 +71,36 @@ trait ListImplementation[A] extends List[A] {
     case h :: _ => Some(h)
     case _ => None
   }
+
   override def tail: Option[List[A]] = this match {
     case _ :: t => Some(t)
     case _ => None
   }
+
+  override def size: Int = this.foldLeft(0)((acc, _) => acc + 1)
+
   override def append(list: List[A]): List[A] = this match {
     case h :: t => h :: (t append list)
     case _ => list
   }
+
   override def foreach(consumer: A =>Unit): Unit = this match {
     case h :: t => consumer(h); t foreach consumer
     case _ => None
   }
+
   override def get(pos: Int): Option[A] = this match {
     case h :: _ if pos == 0 => Some(h)
     case _ :: t if pos > 0 => t get (pos-1)
     case _ => None
   }
+
   override def filter(predicate: A => Boolean): List[A] = this match {
     case h :: t if predicate(h) => h :: (t filter predicate)
     case _ :: t => t filter predicate
     case _ => Nil()
   }
+
   override def map[B](fun: A => B): List[B] = this match {
     case h :: t => fun(h) :: (t map fun)
     case _ => Nil()
@@ -115,41 +127,40 @@ trait ListImplementation[A] extends List[A] {
     case Nil() => Nil()
   }
 
-  private def size: Int = this.foldLeft(0)((acc, _) => acc + 1)
-
-  // TODO: try with a foldRight()
-  override def zipRight: List[(A,Int)] =
-    this.foldRight((this.size - 1, List.nil[(A,Int)]))((elem, acc) => {
-    val (n, res) = acc
-    (n - 1, (elem, n) :: res)
-  })._2
-  /*
-  {
-    @tailrec
-    def _zipRight(l: List[A], k: Int, res: List[(A, Int)]): List[(A, Int)] = l match {
-      case h :: t => _zipRight(t, k + 1, (h, k) :: res)
-      case _ => res.reverse()
-    }
-    _zipRight(this, 0, List.nil)
+  override def zipRight: List[(A,Int)] = {
+    var i = -1
+    this map ((_, {i += 1; i}))
   }
-  */
 
-  override def partition(pred: A => Boolean): (List[A],List[A]) = this match {
-    case h :: t =>
-      val (matching, nonMatching) = t.partition(pred)
-      if (pred(h)) (h :: matching, nonMatching) else (matching, h :: nonMatching)
+  override def partition(pred: A => Boolean): (List[A],List[A]) = (this filter (pred(_)), this filter (!pred(_)))
+
+  override def span(pred: A => Boolean): (List[A],List[A]) = this match {
+    case l @ h :: t =>
+      val (prefix, suffix) = t span pred
+      if (pred(h)) (h :: prefix, suffix) else (List.nil, l)
     case _ => (List.nil, List.nil)
   }
-
-  override def span(pred: A => Boolean): (List[A],List[A]) = ???
 
   /**
     *
     * @throws UnsupportedOperationException if the list is empty
     */
-  override def reduce(op: (A,A)=>A): A = ???
+  override def reduce(op: (A, A) => A): A = this match {
+    case h :: Nil() => h
+    case h :: t => op(h, t reduce op)
+    case _ => throw new UnsupportedOperationException("Cannot reduce empty list")
+  }
 
-  override def takeRight(n: Int): List[A] = ???
+  override def collect[B](f: PartialFunction[A, B]): List[B] = this filter f.isDefinedAt map (f(_))
+
+  override def takeRight(n: Int): List[A] = {
+    def _splitAt[B](l: List[B], n: Int): (List[B], List[B]) = (l, n) match {
+      case (Nil(), _) => (List.nil, List.nil)
+      case (l, m) if m <= 0 => (List.nil, l)
+      case (h :: t, m) => val (lSplit, rSplit) = _splitAt(t, m - 1); (h :: lSplit, rSplit)
+    }
+    _splitAt(this, this.size - n)._2
+  }
 }
 
 // Factories
