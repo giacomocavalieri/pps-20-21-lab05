@@ -5,11 +5,15 @@ import org.junit.jupiter.api.Test
 
 class Ex1Tests {
 
-  @Test
-  def testZipRight() {
-    val list = List("a", "b", "c")
+  val testList: List[Int] = List(1, 2, 3, 4)
 
+  @Test def testZipRight(): Unit = {
     assertEquals(List.nil, List.nil.zipRight)
-    assertEquals(List(("a", 0), ("b", 1), ("c", 2)), list.zipRight)
+    assertEquals(List((1, 0), (2, 1), (3, 2), (4, 3)), testList.zipRight)
+  }
+
+  @Test def testPartition(): Unit = {
+    assertEquals((List.nil, List.nil), List.nil[Int].partition(_ => true))
+    assertEquals((List(1, 3), List(2, 4)), testList.partition(_ % 2 != 0))
   }
 }
