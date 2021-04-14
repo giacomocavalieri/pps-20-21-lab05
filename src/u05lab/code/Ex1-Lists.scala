@@ -129,10 +129,10 @@ trait ListImplementation[A] extends List[A] {
 
   override def zipRight: List[(A,Int)] = {
     var i = -1
-    this map ((_, {i += 1; i}))
+    this map ((_, { i += 1; i }))
   }
 
-  override def partition(pred: A => Boolean): (List[A],List[A]) = (this filter (pred(_)), this filter (!pred(_)))
+  override def partition(pred: A => Boolean): (List[A],List[A]) = (this.filter(pred(_)), this.filter(!pred(_)))
 
   override def span(pred: A => Boolean): (List[A],List[A]) = this match {
     case l @ h :: t =>
@@ -146,20 +146,25 @@ trait ListImplementation[A] extends List[A] {
     * @throws UnsupportedOperationException if the list is empty
     */
   override def reduce(op: (A, A) => A): A = this match {
-    case h :: Nil() => h
-    case h :: t => op(h, t reduce op)
+    case h :: t => t.foldRight(h)(op)
     case _ => throw new UnsupportedOperationException("Cannot reduce empty list")
   }
 
-  override def collect[B](f: PartialFunction[A, B]): List[B] = this filter f.isDefinedAt map (f(_))
+  override def collect[B](f: PartialFunction[A, B]): List[B] = //this filter f.isDefinedAt map (f(_))
+    this.flatMap(f.lift(_).fold(List.nil[B])(List(_)))
 
   override def takeRight(n: Int): List[A] = {
+    // Soluzione che fa uso di foldright
+    var left = n
+    this.foldRight(List.nil[A])((elem, acc) => if (left > 0) { left -= 1; elem :: acc } else acc)
+    /*
     def _splitAt[B](l: List[B], n: Int): (List[B], List[B]) = (l, n) match {
       case (Nil(), _) => (List.nil, List.nil)
       case (l, m) if m <= 0 => (List.nil, l)
       case (h :: t, m) => val (lSplit, rSplit) = _splitAt(t, m - 1); (h :: lSplit, rSplit)
     }
     _splitAt(this, this.size - n)._2
+    */
   }
 }
 

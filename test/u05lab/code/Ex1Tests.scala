@@ -1,6 +1,6 @@
 package u05lab.code
 
-import org.junit.jupiter.api.Assertions.{assertArrayEquals, assertEquals, assertThrows}
+import org.junit.jupiter.api.Assertions.{assertEquals, assertThrows}
 import org.junit.jupiter.api.Test
 
 class Ex1Tests {
